@@ -1,0 +1,63 @@
+name: Python Package using Conda
+
+on: [push]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 5
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+    - name: Add conda to system path
+      run: |
+        # $CONDA is an environment variable pointing to the root of the miniconda directory
+        echo $CONDA/bin >> $GITHUB_PATH
+    - name: Install dependencies
+      run: |
+        conda env update --file environment.yml --name base
+    - name: Lint with flake8
+      run: |
+        conda install flake8
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Test with pytest
+      run: |
+        conda install pytest
+        pytest
+import tensorflow as tf
+from tensorflow.keras import layers, models
+
+# Charger les données d'entraînement (par exemple, depuis TensorFlow datasets)
+(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
+
+# Prétraiter les données
+train_images = train_images / 255.0
+test_images = test_images / 255.0
+
+# Construire le modèle
+model = models.Sequential([
+    layers.Flatten(input_shape=(28, 28)),  # Aplatir l'image en une seule dimension
+    layers.Dense(128, activation='relu'),  # Couche cachée avec 128 neurones et activation relu
+    layers.Dense(10, activation='softmax') # Couche de sortie avec 10 neurones (pour les 10 classes) et activation softmax
+])
+
+# Compiler le modèle
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+# Entraîner le modèle
+model.fit(train_images, train_labels, epochs=10, validation_data=(test_images, test_labels))
+
+# Évaluer le modèle
+test_loss, test_acc = model.evaluate(test_images, test_labels)
+print('Test accuracy:', test_acc)
+
